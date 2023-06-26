@@ -34,7 +34,7 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
             await redirectToIdpHandler(context);
 
             // Override the redirect URI to be what you want
-            context.ProtocolMessage.ResponseMode = OpenIdConnectResponseMode.Query;
+            context.ProtocolMessage.ResponseMode = OpenIdConnectResponseMode.FormPost;
             //context.ProtocolMessage.ResponseType = OpenIdConnectResponseType.CodeIdToken;
             context.ProtocolMessage.RedirectUri = builder.Configuration.GetValue<string>("AzureAd:RedirectUri");
             context.ProtocolMessage.PostLogoutRedirectUri = builder.Configuration.GetValue<string>("AzureAd:PostLogoutRedirectUri");
