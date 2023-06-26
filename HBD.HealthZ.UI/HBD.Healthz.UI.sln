@@ -1,0 +1,21 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HBD.HealthZ.UI", "HBD.HealthZ.UI\HBD.HealthZ.UI.csproj", "{EF03E3BD-421C-4FB9-9F61-CDF74CF17A9C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution", "Solution", "{CD9B61F2-D721-4355-B180-26897E3E62A5}"
+	ProjectSection(SolutionItems) = preProject
+		..\.gitignore = ..\.gitignore
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EF03E3BD-421C-4FB9-9F61-CDF74CF17A9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF03E3BD-421C-4FB9-9F61-CDF74CF17A9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF03E3BD-421C-4FB9-9F61-CDF74CF17A9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF03E3BD-421C-4FB9-9F61-CDF74CF17A9C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
