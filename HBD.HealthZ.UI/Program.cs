@@ -5,7 +5,8 @@ using Microsoft.Identity.Web;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddAuthorization(op=>
+builder.Services
+    .AddAuthorization(op=>
     {
         var policy= new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
         op.DefaultPolicy = policy;
@@ -21,6 +22,20 @@ builder.Services.AddAuthorization(op=>
     //.AddMicrosoftGraph(Configuration.GetSection("DownstreamApi"))
     //.AddInMemoryTokenCaches()
     ;
+builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme, 
+    options => {
+ 
+        var redirectToIdpHandler = options.Events.OnRedirectToIdentityProvider;
+        options.Events.OnRedirectToIdentityProvider = async context =>
+        {
+            // Call what Microsoft.Identity.Web is doing
+            await redirectToIdpHandler(context);
+
+            // Override the redirect URI to be what you want
+            context.ProtocolMessage.RedirectUri = builder.Configuration.GetValue<string>("AzureAd:RedirectUri");
+            context.ProtocolMessage.PostLogoutRedirectUri = builder.Configuration.GetValue<string>("AzureAd:PostLogoutRedirectUri");
+        };
+    });
 
 //Health Check
 builder.Services
