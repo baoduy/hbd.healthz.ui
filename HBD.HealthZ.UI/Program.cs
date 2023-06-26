@@ -57,6 +57,7 @@ var app = builder.Build();
 app
     .UseRouting()
     .UseAuthentication()
+    .UseCookiePolicy()
     .UseAuthorization()
     .UseEndpoints(config => config.MapHealthChecksUI(op =>
     {
