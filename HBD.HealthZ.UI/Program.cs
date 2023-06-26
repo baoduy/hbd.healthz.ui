@@ -12,7 +12,7 @@ builder.Services.AddAuthorization(op=>
         
     })
     .AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAdB2C"))
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"))
     // Add the possibility of acquiring a token to call a protected web API
     //.EnableTokenAcquisitionToCallDownstreamApi(initialScopes)
 
