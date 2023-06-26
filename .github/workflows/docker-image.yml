@@ -15,6 +15,6 @@ jobs:
     
     - name: Push Docker image
       run: |
-        docker build -f HBD.HealthZ.UI/Dockerfile -t baoduy2412/healthz-ui:latest ./HBD.HealthZ.UI
+        docker build -f HBD.HealthZ.UI/Dockerfile -t baoduy2412/healthz-ui:latest .
         docker login -u baoduy2412 -p ${{ secrets.DOCKER_TOKEN }}
         docker push baoduy2412/healthz-ui:latest
