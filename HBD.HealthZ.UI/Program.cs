@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,8 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
             await redirectToIdpHandler(context);
 
             // Override the redirect URI to be what you want
+            context.ProtocolMessage.ResponseMode = OpenIdConnectResponseMode.Query;
+            context.ProtocolMessage.ResponseType = OpenIdConnectResponseType.Code;
             context.ProtocolMessage.RedirectUri = builder.Configuration.GetValue<string>("AzureAd:RedirectUri");
             context.ProtocolMessage.PostLogoutRedirectUri = builder.Configuration.GetValue<string>("AzureAd:PostLogoutRedirectUri");
         };
