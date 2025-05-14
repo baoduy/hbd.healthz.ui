@@ -1,3 +1,4 @@
+using HBD.HealthZ.UI.Configs;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -13,7 +14,11 @@ builder.Services
         op.DefaultPolicy = policy;
     })
     .AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"))
+    .AddMicrosoftIdentityWebApp(op =>
+    {
+        builder.Configuration.GetSection("AzureAd").Bind(op);
+
+    })
     // Add the possibility of acquiring a token to call a protected web API
     //.EnableTokenAcquisitionToCallDownstreamApi(initialScopes)
 
@@ -43,11 +48,7 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
     });
 
 //Health Check
-builder.Services
-    .AddHealthChecksUI()
-    .AddInMemoryStorage();
-//.AddSqliteStorage($"Data Source=Db/healthz.db");
-
+builder.AddHealthzUiCofig();
 
 var app = builder.Build();
 
