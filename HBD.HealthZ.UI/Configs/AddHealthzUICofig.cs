@@ -4,7 +4,7 @@ internal static class HealthzUiCofig
 {
     public static WebApplicationBuilder AddHealthzUiCofig(this WebApplicationBuilder builder)
     {
-        var b = builder.Services.AddHealthChecksUI();
+        var b = builder.Services.AddHealthChecksUI(setup=>setup.MaximumHistoryEntriesPerEndpoint(10));
         var dbType = builder.Configuration.GetValue<DbTypes>("HealthChecksUI:DbType");
         var conn = builder.Configuration.GetConnectionString("DbConn");
 
