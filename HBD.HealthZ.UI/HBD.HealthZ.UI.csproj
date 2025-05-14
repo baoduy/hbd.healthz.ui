@@ -14,6 +14,7 @@
         <PackageReference Include="AspNetCore.HealthChecks.UI.InMemory.Storage" Version="9.0.0" />
         <PackageReference Include="AspNetCore.HealthChecks.UI.MySql.Storage" Version="9.0.0" />
         <PackageReference Include="AspNetCore.HealthChecks.UI.PostgreSQL.Storage" Version="9.0.0" />
+        <PackageReference Include="AspNetCore.HealthChecks.UI.SQLite.Storage" Version="9.0.0" />
         <PackageReference Include="AspNetCore.HealthChecks.UI.SqlServer.Storage" Version="9.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.5" />
@@ -30,9 +31,7 @@
 
 
     <ItemGroup>
-      <None Update="Db\healthz.db">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
+      <Folder Include="Db\" />
     </ItemGroup>
 
 </Project>

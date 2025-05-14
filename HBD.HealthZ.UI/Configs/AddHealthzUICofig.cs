@@ -21,6 +21,9 @@ internal static class HealthzUiCofig
                 case DbTypes.MySql:
                     b.AddMySqlStorage(conn);
                     break;
+                case DbTypes.SqLite:
+                    b.AddSqliteStorage(conn);
+                    break;
                 case DbTypes.Memory:
                 default:
                     b.AddInMemoryStorage();
