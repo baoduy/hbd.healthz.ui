@@ -14,6 +14,11 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageReference Include="FluentAssertions" Version="7.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
+    <!-- DRK-1133: real containers to prove SqLite/NpgSql/MySql actually complete startup, not
+         just resolve. No Testcontainers.MsSql — mcr.microsoft.com/mssql/server ships no arm64
+         manifest, unreachable on this host; see StorageEngineStartupTests. -->
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.15.0" />
+    <PackageReference Include="Testcontainers.MySql" Version="4.15.0" />
   </ItemGroup>
 
   <ItemGroup>
