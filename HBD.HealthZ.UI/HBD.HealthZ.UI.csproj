@@ -7,6 +7,9 @@
         <UserSecretsId>aspnet-HBD.HealthZ.UI-F0D20BCA-4858-487B-8AA4-F8A3C7A17C1B</UserSecretsId>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <LangVersion>default</LangVersion>
+        <!-- The dashboard's own interface is English only; the fourteen translated satellite
+             assemblies the packages carry are ~8 MB of publish output nothing reads. -->
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     </PropertyGroup>
 
     <ItemGroup>
