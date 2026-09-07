@@ -143,3 +143,8 @@ app
     });
 
 app.Run();
+
+// Exposes the top-level statements' implicit entry-point type to the test project so it can
+// drive the real app pipeline via WebApplicationFactory<Program> — no InternalsVisibleTo needed
+// since the marker itself is public, and it changes no runtime behaviour.
+public partial class Program;
