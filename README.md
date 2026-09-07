@@ -319,6 +319,17 @@ address, not the proxy host's LAN address.
 - **A `DbType` typo does not fail the app either.** An unrecognised engine name — or a bare
   number — resolves to in-memory storage with the same warning. `Redis` is the classic case:
   it appears in older configuration comments but no Redis storage provider is referenced.
+- **In-memory storage crashes at startup under QEMU emulation.** Running the `linux/amd64`
+  image on an arm64 host — `docker run --platform linux/amd64` on an Apple-silicon Mac or an
+  arm64 CI runner — aborts before the app listens, with a `System.InvalidCastException` from
+  EF Core's InMemory provider while the Health Checks UI startup migration check finalizes
+  the model. Because the shipped configuration is `DbType: SqlServer` with no
+  `ConnectionStrings:DbConn`, an operator who supplies no configuration lands on exactly
+  this path. Native `linux/amd64` and native `linux/arm64` are both unaffected — emulation is
+  the discriminator, and this is a live limitation, not a fixed bug. Run the image on its own
+  architecture (pull without `--platform`, or use the arm64 image on an arm64 host), or
+  configure a persistent engine with a working connection string so the in-memory provider is
+  never used.
 - **`SqLite` needs a volume.** With `Data Source=Db/healthz.db` the database file lives
   inside the container's writable layer and disappears with the container. Mount a volume
   and point the connection string at it.
