@@ -1,0 +1,21 @@
+# Keep the build context to sources the image is actually built from.
+**/.git
+**/.gitignore
+**/.github
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/*.user
+**/*.DotSettings.user
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/Db
+**/TestResults
+**/.dockerignore
+**/Dockerfile
+**/docker-compose*.yml
+README.md
+LICENSE

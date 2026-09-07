@@ -3,33 +3,113 @@ name: Docker Image CI
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Explicit semver to release (default: patch bump of the latest tag, or 1.0.0 when there is none)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOCKERHUB_IMAGE: baoduy2412/healthz-ui
+  GHCR_IMAGE: ghcr.io/baoduy/healthz-ui
 
 jobs:
-
-  build:
-
+  publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # push the git tag and create the GitHub release
+      packages: write       # push to GHCR
+      id-token: write       # sign the provenance attestation
+      attestations: write
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # tags are needed to derive the next version
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      # The workflow owns the version: patch bump of the highest existing tag, or 1.0.0
+      # for the first release. Override with the workflow_dispatch input for minor/major.
+      - name: Derive version
+        id: version
+        run: |
+          set -euo pipefail
+          requested="${{ github.event.inputs.version }}"
+          if [ -n "$requested" ]; then
+            version="${requested#v}"
+          else
+            latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)"
+            if [ -z "$latest" ]; then
+              version="1.0.0"
+            else
+              IFS=. read -r major minor patch <<<"${latest#v}"
+              version="${major}.${minor}.$((patch + 1))"
+            fi
+          fi
+          echo "Releasing v${version} from ${GITHUB_SHA}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: baoduy2412
-        password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: baoduy2412
+          password: ${{ secrets.DOCKER_TOKEN }}
 
-    - name: Build and push multi-arch Docker image
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        file: HBD.HealthZ.UI/Dockerfile
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: baoduy2412/healthz-ui:latest
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_IMAGE }}
+            ${{ env.GHCR_IMAGE }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
+            type=sha,format=long
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+
+      - name: Build and push multi-arch Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: HBD.HealthZ.UI/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+      - name: Tag the commit and publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "Release v${VERSION} already exists — nothing to do."
+            exit 0
+          fi
+          gh release create "v${VERSION}" \
+            --target "${GITHUB_SHA}" \
+            --title "v${VERSION}" \
+            --generate-notes
