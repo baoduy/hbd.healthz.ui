@@ -72,10 +72,26 @@ app.Use(async (context, next) =>
         // Recompute this hash (dotnet run + view-source) if the HealthChecksUI package
         // version, UIPath/ApiPath, or its Webhooks/aside-menu defaults ever change what that
         // block renders — the hash is over those exact bytes.
+        //
+        // style-src carries 'unsafe-inline', justified: healthchecks-bundle.js embeds
+        // webpack's style-loader runtime, which injects several <style> elements at runtime
+        // (Material Icons @font-face, the timeline layout, …) rather than shipping them in
+        // the extracted healthchecksui-min.css. Their content isn't hashable — the Material
+        // Icons font src is a `blob:` URL style-loader mints fresh on every page load, so its
+        // bytes differ per session. Verified by extracting the package's embedded
+        // healthchecks-bundle.js resource (AspNetCore.HealthChecks.UI 9.0.0) and confirming
+        // the injected @font-face/.vertical-timeline blocks it carries; without
+        // 'unsafe-inline' or a matching hash the browser drops them and Material Icons
+        // degrade to literal ligature text.
+        //
+        // The library's own healthchecksui-min.css sets `--logoImageUrl` to a
+        // GitHub-avatars URL for the dashboard's vendor logo — deliberately left blocked by
+        // img-src 'self' (no third-party host added): losing a decorative logo image is a
+        // smaller cost than widening the policy to an external CDN. See README Security notes.
         headers["Content-Security-Policy"] =
             "default-src 'self'; " +
             "script-src 'self' 'sha256-29KvUQtBdGhEjD36wVjowCcbYSzQFYz/12G+Q3SwFRE='; " +
-            "style-src 'self'; " +
+            "style-src 'self' 'unsafe-inline'; " +
             "img-src 'self' data:; " +
             "font-src 'self'; " +
             "connect-src 'self'; " +

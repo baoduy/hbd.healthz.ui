@@ -80,9 +80,10 @@ Every route above except the two OIDC callbacks requires an authenticated user.
 
 Each configured endpoint is polled every `HealthChecksUI:EvaluationTimeInSeconds` and the
 result is written to the configured storage. The `/api` response — and therefore the
-dashboard — exposes the **10 most recent** history entries per endpoint. That limit is
-pinned in application code (`HBD.HealthZ.UI/Configs/AddHealthzUICofig.cs`) and cannot be
-changed from configuration.
+dashboard — exposes the most recent history entries per endpoint, set by
+`HealthChecksUI:MaximumExecutionHistoriesPerEndpoint`. Default is **10**; any positive
+integer is honoured. A non-positive or unparseable value clamps back to `10` with a startup
+warning (`HBD.HealthZ.UI/Configs/AddHealthzUICofig.cs`).
 
 ### Webhook notifications
 
@@ -220,7 +221,7 @@ The section name `HealthChecks-UI` is accepted as a fallback if `HealthChecksUI`
 | `ApiMaxActiveRequests` | int | `3` | Concurrent requests `/api` will serve. Requests beyond the limit get `429 Too Many Requests` immediately — they are not queued. Must be greater than `0`, or startup throws. |
 | `HeaderText` | string | `Health Checks Status` | Heading shown above the status list. |
 | `NotifyUnHealthyOneTimeUntilChange` | bool | `false` | When `true`, send one webhook per failure episode rather than repeating every `MinimumSecondsBetweenFailureNotifications`. |
-| `MaximumExecutionHistoriesPerEndpoint` | int | *(ignored)* | **Not honoured.** The number of history entries `/api` returns per endpoint is pinned to `10` in application code. |
+| `MaximumExecutionHistoriesPerEndpoint` | int | `10` | Number of history entries `/api` returns per endpoint. Any positive integer is honoured; a non-positive or unparseable value clamps back to `10` with a startup warning. |
 
 ### `ConnectionStrings`
 
@@ -315,10 +316,6 @@ address, not the proxy host's LAN address.
   storage regardless of `DbType`. The dashboard works, nothing errors — and every restart
   throws the history away. If you configured a database and history keeps resetting, this is
   why: look for `Health history will not survive a restart.` in the startup log.
-- **History depth is 10 entries per endpoint, and is not configurable.** Setting
-  `HealthChecksUI:MaximumExecutionHistoriesPerEndpoint` has no effect: configuration is
-  bound first, then the application overwrites the value with `10`. This dashboard is for
-  *current* status, not long-term trends — send those to a real metrics store.
 - **A `DbType` typo does not fail the app either.** An unrecognised engine name — or a bare
   number — resolves to in-memory storage with the same warning. `Redis` is the classic case:
   it appears in older configuration comments but no Redis storage provider is referenced.
@@ -361,6 +358,11 @@ address, not the proxy host's LAN address.
   `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and a `Content-Security-Policy`
   that restricts scripts, styles, fonts and connections to the app's own origin and forbids
   framing (`frame-ancestors 'none'`). Kestrel's `Server` response header is suppressed.
+  `style-src` carries `'unsafe-inline'` because the HealthChecksUI bundle injects its own
+  `<style>` elements at runtime (see the comment above the policy in `Program.cs`). The
+  dashboard's vendor logo (a `background-image` pointed at a GitHub-avatars URL, baked into
+  the library's own stylesheet) is deliberately left blocked by `img-src 'self'` — no
+  third-party host was added to the policy for it.
 - Outside `Development`, an unhandled failure returns `500` with the fixed body
   `An unexpected error occurred.` — no stack trace, no exception type. Diagnostics for a
   failure are in the container's logs, not in the HTTP response.
