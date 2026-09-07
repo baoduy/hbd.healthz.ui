@@ -18,7 +18,8 @@ RUN dotnet publish "HBD.HealthZ.UI/HBD.HealthZ.UI.csproj" \
         --no-self-contained \
         --no-restore \
         -o /app/publish \
-        -p:UseAppHost=false
+        -p:UseAppHost=false \
+        -p:DebugType=none
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app

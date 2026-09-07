@@ -22,12 +22,13 @@ env:
 
 jobs:
   publish:
+    # workflow_dispatch has no ref restriction of its own and the Actions UI
+    # pre-selects the default branch (dev), so the ref is guarded here as well.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write       # push the git tag and create the GitHub release
       packages: write       # push to GHCR
-      id-token: write       # sign the provenance attestation
-      attestations: write
 
     steps:
       - uses: actions/checkout@v4
@@ -38,11 +39,14 @@ jobs:
       # for the first release. Override with the workflow_dispatch input for minor/major.
       - name: Derive version
         id: version
+        env:
+          REQUESTED: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          requested="${{ github.event.inputs.version }}"
+          requested="${REQUESTED#v}"
           if [ -n "$requested" ]; then
-            version="${requested#v}"
+            [[ "$requested" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::'$requested' is not semver"; exit 1; }
+            version="$requested"
           else
             latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)"
             if [ -z "$latest" ]; then
