@@ -6,8 +6,17 @@ namespace HBD.HealthZ.UI.Configs;
 /// </summary>
 public readonly record struct StorageEngineResolution(DbTypes Engine, bool FellBackToMemory, string? FallbackReason);
 
+/// <summary>
+/// Outcome of deciding the effective MaximumHistoryEntriesPerEndpoint: the value that will
+/// actually be applied, and whether a non-positive/unparseable configured value was clamped
+/// back to the default.
+/// </summary>
+public readonly record struct MaxHistoryEntriesResolution(int Value, bool Clamped);
+
 public static class HealthzUiCofig
 {
+    public const int DefaultMaxHistoryEntriesPerEndpoint = 10;
+
     /// <summary>
     /// Pure decision, no I/O: given the configured engine name and connection string, which
     /// storage provider actually gets used. An empty connection string, and an unrecognised
@@ -38,9 +47,39 @@ public static class HealthzUiCofig
         };
     }
 
+    /// <summary>
+    /// Pure decision, no I/O: given the raw configured value for
+    /// HealthChecksUI:MaximumExecutionHistoriesPerEndpoint, which history depth actually gets
+    /// applied. Unset, unparseable, or non-positive values all clamp to
+    /// <see cref="DefaultMaxHistoryEntriesPerEndpoint"/> rather than crash at startup.
+    /// </summary>
+    public static MaxHistoryEntriesResolution ResolveMaxHistoryEntriesPerEndpoint(string? configuredValue)
+    {
+        if (string.IsNullOrWhiteSpace(configuredValue))
+            return new MaxHistoryEntriesResolution(DefaultMaxHistoryEntriesPerEndpoint, false);
+
+        if (!int.TryParse(configuredValue, out var parsed) || parsed <= 0)
+            return new MaxHistoryEntriesResolution(DefaultMaxHistoryEntriesPerEndpoint, true);
+
+        return new MaxHistoryEntriesResolution(parsed, false);
+    }
+
     public static WebApplicationBuilder AddHealthzUiCofig(this WebApplicationBuilder builder)
     {
-        var b = builder.Services.AddHealthChecksUI(setup=>setup.MaximumHistoryEntriesPerEndpoint(10));
+        var configuredMaxHistoryEntries = builder.Configuration["HealthChecksUI:MaximumExecutionHistoriesPerEndpoint"];
+        var maxHistoryEntries = ResolveMaxHistoryEntriesPerEndpoint(configuredMaxHistoryEntries);
+
+        var b = builder.Services.AddHealthChecksUI(setup => setup.MaximumHistoryEntriesPerEndpoint(maxHistoryEntries.Value));
+
+        if (maxHistoryEntries.Clamped)
+        {
+            using var loggerFactory = LoggerFactory.Create(lb => lb.AddConsole());
+            loggerFactory.CreateLogger("HealthzUiCofig")
+                .LogWarning(
+                    "HealthChecksUI:MaximumExecutionHistoriesPerEndpoint '{ConfiguredValue}' is not a positive integer; using default {Default}.",
+                    configuredMaxHistoryEntries, DefaultMaxHistoryEntriesPerEndpoint);
+        }
+
         var dbType = builder.Configuration["HealthChecksUI:DbType"];
         var conn = builder.Configuration.GetConnectionString("DbConn");
 
