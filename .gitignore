@@ -1,4 +1,10 @@
 
 .idea
+.vs/
 **/bin
 **/obj
+*.user
+*.DotSettings.user
+*.db
+*.db-shm
+*.db-wal

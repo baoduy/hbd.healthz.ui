@@ -7,6 +7,9 @@
         <UserSecretsId>aspnet-HBD.HealthZ.UI-F0D20BCA-4858-487B-8AA4-F8A3C7A17C1B</UserSecretsId>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <LangVersion>default</LangVersion>
+        <!-- The dashboard's own interface is English only; the fourteen translated satellite
+             assemblies the packages carry are ~8 MB of publish output nothing reads. -->
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     </PropertyGroup>
 
     <ItemGroup>
@@ -20,18 +23,25 @@
         <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.11" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
         <PackageReference Include="Microsoft.Identity.Web" Version="4.14.2" />
-        <PackageReference Include="System.Text.Json" Version="10.0.11" />
+    </ItemGroup>
+
+    <!-- Advisory pins: transitive packages bumped to the lowest published stable version each advisory records as fixed. -->
+    <ItemGroup>
+        <PackageReference Include="KubernetesClient" Version="17.0.14" />
+        <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    </ItemGroup>
+
+    <!-- Design-time-only tooling: keep out of runtime/publish output, nothing here runs EF migrations or Roslyn at run time. -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11" PrivateAssets="all" ExcludeAssets="runtime;native;build" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.5.0" PrivateAssets="all" ExcludeAssets="runtime;native;build" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.5.0" PrivateAssets="all" ExcludeAssets="runtime;native;build" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.5.0" PrivateAssets="all" ExcludeAssets="runtime;native;build" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.5.0" PrivateAssets="all" ExcludeAssets="runtime;native;build" />
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="..\.dockerignore">
-        <Link>.dockerignore</Link>
-      </Content>
-    </ItemGroup>
-
-
-    <ItemGroup>
-      <Folder Include="Db\" />
+      <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
     </ItemGroup>
 
 </Project>

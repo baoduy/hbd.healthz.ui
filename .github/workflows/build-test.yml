@@ -1,0 +1,134 @@
+name: Build & Test
+
+on:
+  pull_request:
+    branches: [ "dev", "main" ]
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # No -warnaserror here: Directory.Build.props already promotes the dependency-audit
+      # warnings (NU1901-NU1904) to errors, and this job surfaces that failure as-is.
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      - name: Test
+        run: dotnet test -c Release --no-build --verbosity normal
+
+  # The Dockerfile cross-compiles and publishes RID-specific output, so a break in
+  # it would otherwise only surface on push to main, at the publish step. Build both
+  # architectures on pull requests without pushing; layer caching keeps it cheap.
+  docker-build:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Split from the arm64 build (below) so this one can `load` into the runner's
+      # own Docker daemon — `--load` only works for a single-platform build — and
+      # actually be started and probed on native amd64 hardware, not just built.
+      - name: Build amd64 image (load into runner)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: HBD.HealthZ.UI/Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: healthz-ui:amd64-ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build arm64 image (no push, not run — this runner can't execute arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: HBD.HealthZ.UI/Dockerfile
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # DRK-1132: proves the amd64 image actually starts and serves on native amd64
+      # hardware (this runner), not emulated amd64 — the only kind reachable from an
+      # aarch64 dev box, and not equivalent to it for this class of failure. Covers
+      # both the shipped default (falls back to in-memory with no config) and
+      # in-memory storage selected explicitly. Fails loud on a crash, an exited
+      # container, or a timeout — never on a quiet, unchecked poll.
+      - name: Start & verify amd64 image on native hardware
+        run: |
+          set -euo pipefail
+
+          verify_starts() {
+            local label="$1"
+            shift
+            local name="healthz-ci-${label}"
+
+            docker rm -f "$name" >/dev/null 2>&1 || true
+            docker run -d --name "$name" -p 0:8080 "$@" healthz-ui:amd64-ci
+            local port
+            port=$(docker inspect -f '{{ (index (index .NetworkSettings.Ports "8080/tcp") 0).HostPort }}' "$name")
+
+            echo "::group::${label}: waiting for startup (host port ${port})"
+            local started="" http_code="" attempt
+            for attempt in $(seq 1 30); do
+              local status
+              status=$(docker inspect -f '{{.State.Status}}' "$name")
+              if [ "$status" != "running" ]; then
+                echo "${label}: container exited early (status=${status})"
+                docker logs "$name" || true
+                echo "::endgroup::"
+                docker rm -f "$name" >/dev/null 2>&1 || true
+                echo "FAIL (${label}): container exited before starting" >&2
+                exit 1
+              fi
+
+              if docker logs "$name" 2>&1 | grep -q "Application started"; then
+                started=1
+              fi
+
+              if [ -n "$started" ]; then
+                http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${port}/" || true)
+                if [ -n "$http_code" ] && [ "$http_code" != "000" ]; then
+                  echo "${label}: Application started; HTTP ${http_code} from http://127.0.0.1:${port}/"
+                  echo "::endgroup::"
+                  docker logs "$name" | grep "Application started"
+                  docker rm -f "$name" >/dev/null 2>&1 || true
+                  return 0
+                fi
+              fi
+
+              sleep 2
+            done
+
+            echo "${label}: timed out waiting for startup + a response"
+            docker logs "$name" || true
+            echo "::endgroup::"
+            docker rm -f "$name" >/dev/null 2>&1 || true
+            echo "FAIL (${label}): timed out — no 'Application started' + live HTTP response within 60s" >&2
+            exit 1
+          }
+
+          verify_starts "shipped-default"
+          verify_starts "dbtype-memory" -e HealthChecksUI__DbType=Memory
